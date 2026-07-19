@@ -20,7 +20,7 @@ npm install
 ```
 
 ## 🏃‍♀️ Scripts
-- `npm run backend` – Start the backend server.
+- `npm run backend` – Start the mock API on [http://localhost:5001](http://localhost:5001) (port 5001 avoids a conflict with macOS AirPlay Receiver on 5000).
 - `npm run dev` – Start the development server.
 - `npm run lint` – Lint the code.
 - `npm run test:e2e` – Open Cypress.
