@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loan Calculator Architecture</title>
+  <style>
+    :root {
+      --bg: #f7f7f5;
+      --surface: #ffffff;
+      --text: #1c1c1a;
+      --muted: #5c5c57;
+      --faint: #8a8a84;
+      --border: #e4e4df;
+      --border-strong: #d0d0c8;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --warn-bg: #fff8e8;
+      --warn-border: #f0d9a0;
+      --info-bg: #eef5ff;
+      --info-border: #c7dbf8;
+      --ok-bg: #eef8f0;
+      --ok-border: #b9dfc2;
+      --neutral-bg: #f3f3ef;
+      --code-bg: #f0f0eb;
+      --radius: 8px;
+      --font: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .page {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 28px clamp(18px, 4vw, 48px) 64px;
+    }
+    .eyebrow {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--faint);
+      text-transform: uppercase;
+      margin: 0 0 6px;
+    }
+    h1 {
+      font-size: 28px;
+      line-height: 1.2;
+      margin: 0 0 8px;
+      font-weight: 650;
+    }
+    h2 {
+      font-size: 20px;
+      margin: 0 0 8px;
+      font-weight: 650;
+    }
+    h3 {
+      font-size: 16px;
+      margin: 0 0 10px;
+      font-weight: 650;
+    }
+    p { margin: 0; }
+    .lede {
+      color: var(--muted);
+      max-width: 760px;
+      margin-bottom: 20px;
+    }
+    .muted { color: var(--muted); }
+    .faint { color: var(--faint); }
+    .small { font-size: 13px; }
+    .semibold { font-weight: 600; }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .tab {
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 7px 14px;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .tab[aria-selected="true"] {
+      background: var(--text);
+      color: #fff;
+      border-color: var(--text);
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid var(--border);
+      margin: 0 0 24px;
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .stack { display: flex; flex-direction: column; gap: 20px; }
+    .stack-sm { display: flex; flex-direction: column; gap: 8px; }
+
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 22px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      min-height: 120px;
+    }
+    .node {
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      min-width: 145px;
+      flex: 1 1 145px;
+    }
+    .node.accent {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 52px;
+      color: var(--accent);
+      font-size: 20px;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+    .arrow span {
+      font-size: 11px;
+      color: var(--faint);
+      margin-bottom: 4px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .grid-pipeline {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+    .grid-why {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 10px 16px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .card-body { padding: 14px; }
+
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+    .stat-value {
+      font-size: 22px;
+      font-weight: 650;
+      margin-bottom: 4px;
+    }
+    .stat-value.info { color: var(--accent); }
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    code, .code {
+      font-family: var(--mono);
+      font-size: 0.92em;
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .callout {
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      background: var(--neutral-bg);
+    }
+    .callout.info { background: var(--info-bg); border-color: var(--info-border); }
+    .callout.warn { background: var(--warn-bg); border-color: var(--warn-border); }
+    .callout.ok { background: var(--ok-bg); border-color: var(--ok-border); }
+    .callout-title {
+      font-weight: 650;
+      margin-bottom: 4px;
+    }
+
+    .timeline { position: relative; }
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 17px;
+      top: 20px;
+      bottom: 20px;
+      width: 1px;
+      background: var(--border-strong);
+    }
+    .step {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      position: relative;
+      margin-bottom: 14px;
+    }
+    .step:last-child { margin-bottom: 0; }
+    .badge {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 650;
+      flex: 0 0 34px;
+      z-index: 1;
+    }
+    .step-body { flex: 1; padding-top: 3px; }
+    .file-path {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .file-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-top: 1px solid var(--border);
+    }
+    .file-row:first-child { border-top: 0; }
+    .example-box {
+      background: var(--neutral-bg);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+
+    @media (max-width: 800px) {
+      .grid-2, .grid-3, .grid-4, .grid-pipeline, .grid-why {
+        grid-template-columns: 1fr;
+      }
+      .flow { flex-wrap: wrap; }
+      .arrow { transform: rotate(90deg); min-width: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <p class="eyebrow">Valiant Loan Repayment Calculator</p>
+    <h1>Architecture and data flow</h1>
+    <p class="lede">
+      A visual guide to how API data, Vue reactivity, finance logic, and UI components work
+      together—from page load to the displayed repayment.
+    </p>
+
+    <div class="tabs" role="tablist" aria-label="Architecture sections">
+      <button class="tab" role="tab" aria-selected="true" data-tab="overview">Overview</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="runtime">Runtime flow</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="calculation">Calculation</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="files">File map</button>
+    </div>
+    <hr />
+
+    <!-- OVERVIEW -->
+    <section class="panel active" id="panel-overview">
+      <div class="stack">
+        <div>
+          <h2>Architecture at a glance</h2>
+          <p class="muted">
+            The app follows a one-way data flow: the backend supplies choices, the container owns
+            user selections, a composable derives a result, and presentation components render it.
+          </p>
+        </div>
+
+        <div class="flow">
+          <div class="node">
+            <div class="semibold">Mock API</div>
+            <div class="small muted" style="margin-top:4px">Purposes, rates, frequencies, terms</div>
+          </div>
+          <div class="arrow"><span>fetch</span>→</div>
+          <div class="node">
+            <div class="semibold">useLoanOptions</div>
+            <div class="small muted" style="margin-top:4px">Loading, error, and option lists</div>
+          </div>
+          <div class="arrow"><span>refs</span>→</div>
+          <div class="node accent">
+            <div class="semibold">LoanCalculator</div>
+            <div class="small muted" style="margin-top:4px">Owns form state and orchestration</div>
+          </div>
+          <div class="arrow"><span>inputs</span>→</div>
+          <div class="node">
+            <div class="semibold">useLoanCalculator</div>
+            <div class="small muted" style="margin-top:4px">Reactive validation and result</div>
+          </div>
+          <div class="arrow"><span>props</span>→</div>
+          <div class="node">
+            <div class="semibold">RepaymentSummary</div>
+            <div class="small muted" style="margin-top:4px">Formats and displays the answer</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">Container layer</div>
+            <div class="card-body stack-sm">
+              <p>
+                <code>LoanCalculator.vue</code> is the coordinator. It creates the four pieces
+                of form state, converts select values to numbers, finds the selected annual rate,
+                and connects the composables to the child components.
+              </p>
+              <p class="small muted">
+                It does not contain the finance formula, which keeps UI concerns separate from
+                business logic.
+              </p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">Domain layer</div>
+            <div class="card-body stack-sm">
+              <p>
+                <code>calculateRepayments.js</code> is a pure function. Given four numbers, it
+                validates them, calls the supplied PMT utility, fixes the outflow sign, rounds
+                money, and returns the result.
+              </p>
+              <p class="small muted">
+                Because it has no Vue or network dependency, it is easy to test independently.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2>Responsibilities by layer</h2>
+          <div class="grid-4" style="margin-top:12px">
+            <div class="stat">
+              <div class="stat-value">API</div>
+              <div class="stat-label">Source of options and annual rates</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">Vue refs</div>
+              <div class="stat-label">Current user selections</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">Computed</div>
+              <div class="stat-label">Derived values and reactive result</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">Pure JS</div>
+              <div class="stat-label">Finance calculation and rounding</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout info">
+          <div class="callout-title">Core design principle</div>
+          <p>
+            Data moves downward as props and computed values. User changes move upward through
+            <code>v-model</code>. The calculation remains isolated from rendering.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- RUNTIME -->
+    <section class="panel" id="panel-runtime">
+      <div class="stack">
+        <div>
+          <h2>Runtime sequence</h2>
+          <p class="muted">
+            Vue tracks every ref and computed dependency. Changing any input automatically repeats
+            steps 4–6; no calculate button or manual event chain is required.
+          </p>
+        </div>
+
+        <div class="timeline">
+          <div class="step">
+            <div class="badge">1</div>
+            <div class="step-body">
+              <div class="semibold">Component mounts</div>
+              <p class="small muted">LoanCalculator calls <code>loadOptions()</code> inside <code>onMounted</code>.</p>
+              <p class="small faint" style="margin-top:4px"><code>src/components/LoanCalculator.vue</code></p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="badge">2</div>
+            <div class="step-body">
+              <div class="semibold">Options load concurrently</div>
+              <p class="small muted"><code>useLoanOptions</code> uses <code>Promise.all</code> to fetch purposes, repayment periods, and terms.</p>
+              <p class="small faint" style="margin-top:4px"><code>src/composables/useLoanOptions.js</code></p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="badge">3</div>
+            <div class="step-body">
+              <div class="semibold">User enters four values</div>
+              <p class="small muted">LoanAmountInput strips non-digits. Three selects emit values through <code>v-model</code>.</p>
+              <p class="small faint" style="margin-top:4px"><code>src/components/LoanAmountInput.vue</code></p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="badge">4</div>
+            <div class="step-body">
+              <div class="semibold">Container derives calculation inputs</div>
+              <p class="small muted">Computed values parse numbers and find <code>annualRate</code> from the selected purpose object.</p>
+              <p class="small faint" style="margin-top:4px"><code>src/components/LoanCalculator.vue</code></p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="badge">5</div>
+            <div class="step-body">
+              <div class="semibold">Reactive calculation runs</div>
+              <p class="small muted"><code>useLoanCalculator</code> checks completeness and amount bounds, then invokes the pure function.</p>
+              <p class="small faint" style="margin-top:4px"><code>src/composables/useLoanCalculator.js</code></p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="badge">6</div>
+            <div class="step-body">
+              <div class="semibold">Summary renders</div>
+              <p class="small muted">When <code>result</code> is non-null, RepaymentSummary formats both values as AUD.</p>
+              <p class="small faint" style="margin-top:4px"><code>src/components/RepaymentSummary.vue</code></p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2>Branching states</h2>
+          <div class="grid-3" style="margin-top:12px">
+            <div class="card">
+              <div class="card-header">Loading</div>
+              <div class="card-body">
+                <p class="small"><code>isLoading = true</code>; selects are disabled and the loading message appears.</p>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">Incomplete or invalid</div>
+              <div class="card-body">
+                <p class="small">The computed result is <code>null</code>; a placeholder replaces the summary.</p>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">Fetch error</div>
+              <div class="card-body">
+                <p class="small">Lists are cleared, selections are reset by the watcher, and retry is offered.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout">
+          <div class="callout-title">Why the error watcher clears selections</div>
+          <p>
+            A later failed reload should not leave an old annual rate or period selected. Resetting
+            the selects also makes the computed result become <code>null</code>, preventing a stale
+            repayment estimate.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CALCULATION -->
+    <section class="panel" id="panel-calculation">
+      <div class="stack">
+        <div>
+          <h2>Finance calculation pipeline</h2>
+          <p class="muted">
+            The API values are meaningful domain inputs: annual rate is attached to purpose, while
+            12, 26, and 52 represent repayment periods per year.
+          </p>
+        </div>
+
+        <div class="grid-pipeline">
+          <div class="node">
+            <div class="semibold">Annual rate</div>
+            <div class="small muted" style="margin-top:4px">Example: 0.10 from selected purpose</div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="node accent">
+            <div class="semibold">Rate per period</div>
+            <div class="small muted" style="margin-top:4px">0.10 ÷ 12 = 0.008333…</div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="node">
+            <div class="semibold">PMT rate input</div>
+            <div class="small muted" style="margin-top:4px">Interest applied each repayment</div>
+          </div>
+        </div>
+
+        <div class="grid-pipeline">
+          <div class="node">
+            <div class="semibold">Term</div>
+            <div class="small muted" style="margin-top:4px">24 months</div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="node accent">
+            <div class="semibold">Number of periods</div>
+            <div class="small muted" style="margin-top:4px">24 × (12 ÷ 12) = 24</div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="node">
+            <div class="semibold">PMT nper input</div>
+            <div class="small muted" style="margin-top:4px">Total repayment count</div>
+          </div>
+        </div>
+
+        <div class="example-box stack-sm">
+          <h3>Worked example: $30,000 at 10%, monthly, 2 years</h3>
+          <p><code>ratePerPeriod = 0.10 / 12</code></p>
+          <p><code>numberOfPeriods = 24 * (12 / 12) = 24</code></p>
+          <p><code>PMT(0.10 / 12, 24, 30000) = -1384.347...</code></p>
+          <hr style="margin: 10px 0" />
+          <div class="grid-2">
+            <div class="stat">
+              <div class="stat-value info">$1,384.35</div>
+              <div class="stat-label">Math.abs(PMT) rounded to cents</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">$33,224.40</div>
+              <div class="stat-label">$1,384.35 × 24 periods</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2>Why each transformation exists</h2>
+          <div class="grid-why" style="margin-top:12px">
+            <div class="semibold">Divide annual rate</div>
+            <div class="muted">PMT needs the interest rate for one repayment period, not one year.</div>
+            <div class="semibold">Convert term to periods</div>
+            <div class="muted">A two-year weekly loan has 104 payments; monthly has 24.</div>
+            <div class="semibold">Use Math.abs</div>
+            <div class="muted">PMT returns cash paid out as a negative value; the UI displays a positive cost.</div>
+            <div class="semibold">Round to cents</div>
+            <div class="muted">Displayed and multiplied monetary values remain aligned to currency precision.</div>
+          </div>
+        </div>
+
+        <div class="callout warn">
+          <div class="callout-title">Interview nuance: total repayment rounding</div>
+          <p>
+            This implementation multiplies the rounded periodic payment by the period count. That
+            models paying the displayed cent amount each period. An alternative is multiplying the
+            unrounded PMT value and rounding only the final total; explain which business rule you chose.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FILES -->
+    <section class="panel" id="panel-files">
+      <div class="stack">
+        <div>
+          <h2>File ownership map</h2>
+          <p class="muted">
+            A useful interview answer for every file is: “this file owns X, receives Y, and returns
+            or renders Z.”
+          </p>
+        </div>
+
+        <div>
+          <h3>Entry and orchestration</h3>
+          <div class="file-row">
+            <div>
+              <div class="file-path">src/components/LoanCalculator.vue</div>
+              <p class="small muted">Owns form state; joins options, calculation, and presentation.</p>
+            </div>
+          </div>
+          <div class="file-row">
+            <div>
+              <div class="file-path">src/App.vue</div>
+              <p class="small muted">Page shell that mounts the calculator.</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3>Input and output components</h3>
+          <div class="file-row">
+            <div>
+              <div class="file-path">src/components/LoanAmountInput.vue</div>
+              <p class="small muted">Digits-only text input with live min/max errors.</p>
+            </div>
+          </div>
+          <div class="file-row">
+            <div>
+              <div class="file-path">src/components/LoanPurposeSelect.vue</div>
+              <p class="small muted">Purpose choices; selected value identifies annual rate.</p>
+            </div>
+          </div>
+          <div class="file-row">
+            <div>
+              <div class="file-path">src/components/RepaymentPeriodSelect.vue</div>
+              <p class="small muted">Frequency choices: 12, 26, or 52 per year.</p>
+            </div>
+          </div>
+          <div class="file-row">
+            <div>
+              <div class="file-path">src/components/LoanTermSelect.vue</div>
+              <p class="small muted">Term choices represented in months.</p>
+            </div>
+          </div>
+          <div class="file-row">
+            <div>
+              <div class="file-path">src/components/RepaymentSummary.vue</div>
+              <p class="small muted">AUD-formatted periodic and total repayment output.</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3>Data and business logic</h3>
+          <div class="file-row">
+            <div>
+              <div class="file-path">src/composables/useLoanOptions.js</div>
+              <p class="small muted">Fetches three option lists concurrently; exposes loading and error.</p>
+            </div>
+          </div>
+          <div class="file-row">
+            <div>
+              <div class="file-path">src/composables/useLoanCalculator.js</div>
+              <p class="small muted">Reactive guard around the pure calculation.</p>
+            </div>
+          </div>
+          <div class="file-row">
+            <div>
+              <div class="file-path">src/utils/calculateRepayments.js</div>
+              <p class="small muted">Validation, period conversion, PMT call, sign correction, totals.</p>
+            </div>
+          </div>
+          <div class="file-row">
+            <div>
+              <div class="file-path">src/utils/PMT.js</div>
+              <p class="small muted">Provided Excel-compatible PMT primitive.</p>
+            </div>
+          </div>
+          <div class="file-row">
+            <div>
+              <div class="file-path">src/utils/currency.js</div>
+              <p class="small muted">Intl.NumberFormat and cent rounding helpers.</p>
+            </div>
+          </div>
+          <div class="file-row">
+            <div>
+              <div class="file-path">backend/index.js</div>
+              <p class="small muted">Mock API and the source of purpose rates and select values.</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3>Verification</h3>
+          <div class="file-row">
+            <div>
+              <div class="file-path">tests/unit/calculateRepayments.spec.js</div>
+              <p class="small muted">Worked example, frequencies, boundaries, and rounding.</p>
+            </div>
+          </div>
+          <div class="file-row">
+            <div>
+              <div class="file-path">tests/e2e/specs/tests.js</div>
+              <p class="small muted">Browser-level happy path, validation, input filtering, and API failure.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout ok">
+          <div class="callout-title">A concise architecture answer</div>
+          <p>
+            “The container owns state. One composable fetches API options, another derives the reactive
+            result, and a pure utility owns the finance formula. Small components handle input and
+            presentation. Unit tests protect the math; Cypress protects the complete user flow.”
+          </p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const tabs = document.querySelectorAll('.tab')
+    const panels = {
+      overview: document.getElementById('panel-overview'),
+      runtime: document.getElementById('panel-runtime'),
+      calculation: document.getElementById('panel-calculation'),
+      files: document.getElementById('panel-files'),
+    }
+
+    function activate (name) {
+      tabs.forEach((tab) => {
+        const selected = tab.dataset.tab === name
+        tab.setAttribute('aria-selected', selected ? 'true' : 'false')
+      })
+      Object.entries(panels).forEach(([key, panel]) => {
+        panel.classList.toggle('active', key === name)
+      })
+      history.replaceState(null, '', '#' + name)
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => activate(tab.dataset.tab))
+    })
+
+    const initial = (location.hash || '#overview').slice(1)
+    activate(panels[initial] ? initial : 'overview')
+  </script>
+</body>
+</html>
