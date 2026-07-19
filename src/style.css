@@ -1,3 +1,35 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    font-family: Manrope, Arial, ui-sans-serif, sans-serif;
+    color: #262c2d;
+    background-color: #262c2d;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .valiant-field {
+    @apply w-full rounded-md border border-valiant-border bg-white px-3 py-3 text-base text-valiant-charcoal outline-none transition;
+    @apply focus:border-valiant-charcoal focus:ring-2 focus:ring-valiant-yellow;
+  }
+
+  .valiant-field-error {
+    @apply border-red-500 focus:border-red-500 focus:ring-red-200;
+  }
+
+  .valiant-label {
+    @apply text-sm font-bold text-valiant-charcoal;
+  }
+
+  .valiant-btn {
+    @apply inline-flex items-center justify-center rounded-md bg-valiant-yellow px-4 py-2.5 text-sm font-bold text-valiant-charcoal transition hover:bg-valiant-yellow-deep;
+  }
+}
